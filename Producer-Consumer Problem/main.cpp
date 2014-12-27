@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <time.h>
+#include <list>
 
 /*---------------Example-------------*/
 #define MAX_SEM_COUNT 10
@@ -13,11 +14,11 @@ DWORD WINAPI ThreadProc(LPVOID);
 /*-----------------------------------*/
 
 typedef int buffer_item;
-#define buffer_size 5
+#define BUFFER_SIZE 5
 //int n;
 HANDLE Mutex;
-HANDLE Empty;
-HANDLE Full;
+HANDLE emptySemaphore;
+HANDLE fullSemaphore;
 FILE* fp;
 
 DWORD WINAPI producer(LPVOID);
@@ -40,41 +41,81 @@ const std::string currentDateTime() {
 	return buf;
 }
 
+int stringToInt(const char* argv)
+{
+	std::istringstream ss(argv);
+	int Int;
+	if (!(ss >> Int))
+	{
+		std::cerr << "argv: Invalid number " << argv << '\n';
+		return 1;
+	}
+
+	return Int;
+}
+
 int main(int argc, char* argv[])
 {
-	assert(fopen_s(&fp, "error.log", "a") == 0);
 	/*  1. Get command line arguments argv[1]:How long to sleep before terminating, argv[2]:the num of producer, argv[3]:the num of consumer  */
-	if (argc == 4)
+	#pragma region 1. Get command line arguments
+	//assert(fopen_s(&fp, "error.log", "a") == 0);
+	fopen_s(&fp, "error.log", "a");
+	if (argc != 4)
 	{
-		std::istringstream ss(argv[1]);
-		int sleepTime;
-		if (!(ss >> sleepTime))
-			std::cerr << "Invalid number " << argv[1] << '\n';
-
-		ss = std::istringstream(argv[2]);
-		int numProducer;
-		if (!(ss >> numProducer))
-			std::cerr << "Invalid number " << argv[2] << '\n';
-
-		ss = std::istringstream(argv[3]);
-		int numConsumer;
-		if (!(ss >> numConsumer))
-			std::cerr << "Invalid number " << argv[3] << '\n';
-	}
-	else{
 		fprintf_s(fp, "%s Error Initial Arguments\n", currentDateTime().c_str());
 		//std::cout << currentDateTime() << std::endl;
 		exit(EXIT_FAILURE);
 	}
+	int sleepTime = stringToInt(argv[1]);
+	int numProducer = stringToInt(argv[2]);
+	int numConsumer = stringToInt(argv[3]);
+	#pragma endregion
 
 	/*  2. Init the buffer  */
+	#pragma region 2. Init the buffer
+	Mutex = CreateMutex(
+		NULL,	// Security Attribute: If NULL, it disallow any children of the process creating this mutex lock to inherit the handle of the lock.
+		FALSE,	// lock's inital owner: If FALSE, it indicates that the thread creating the mutex is not the inital owner.
+		NULL);	// Name of the Mutex
+	if (Mutex == NULL)
+	{
+		fprintf_s(fp, "%s CreateMutex error: %d\n", currentDateTime().c_str(), GetLastError());
+		exit(EXIT_FAILURE);
+	}
+
+	emptySemaphore = CreateSemaphore(
+		NULL,           // default security attributes
+		BUFFER_SIZE,	// initial count
+		BUFFER_SIZE,	// maximum count
+		NULL);          // unnamed semaphore
+	if (emptySemaphore == NULL)
+	{
+		fprintf_s(fp, "%s CreateSemaphore error: %d\n", currentDateTime().c_str(), GetLastError());
+		exit(EXIT_FAILURE);
+	}
+
+	fullSemaphore = CreateSemaphore(
+		NULL,
+		0,
+		BUFFER_SIZE,
+		NULL);
+	if (fullSemaphore == NULL)
+	{
+		fprintf_s(fp, "%s CreateSemaphore error: %d\n", currentDateTime().c_str(), GetLastError());
+		exit(EXIT_FAILURE);
+	}
+	#pragma endregion
+
 	/*  3. Create producer threads */
+	std::list<HANDLE> producerThread(numProducer);
+
 	/*  4. Create consumer threads */
+	std::list<HANDLE> consumerThread(numConsumer);
+
 	/*  5. Sleep */
+
 	/*  6. Exit */
 	fclose(fp);
-
-
 	system("PAUSE");
 	return 0;
 }
@@ -183,24 +224,35 @@ DWORD WINAPI producer(LPVOID Param)
 {
 	do
 	{
-		//
+		
 		//sleep(rand());
 		//produce an item in next_produced
 		//buffer_item next_produced = rand();
 
 		//wait(empty)
+		WaitForSingleObject(emptySemaphore, INFINITE);
 		//wait(mutex)
+		WaitForSingleObject(Mutex, INFINITE); // INFINITE indicates that it will wait an infinite amount of	time for the lock to become available.
 
 		//add next_produced to the buffer
 		//if(insert_item(next_produced))
-			//fprint("report error condition")
+		//fprint("report error condition")
 		//else
-			//printf("Producer produced %d\n",next_produced);
+		//printf("Producer produced %d\n",next_produced);
 
 		//signal(mutex)
+		if (ReleaseMutex(Mutex) == 0)
+		{
+			std::cerr << "Producer release Mutex Failed" << std::endl;
+		}
+
 		//signal(full)
+		if (ReleaseSemaphore(fullSemaphore, 1, NULL) == 0)
+		{
+			std::cerr << "Producer release Semaphore Failed" << std::endl;
+		}
 	} while (true);
-	
+
 }
 
 int insert_item(buffer_item item)
@@ -216,25 +268,34 @@ DWORD WINAPI consumer(LPVOID Param)
 	do
 	{
 		//wait(full)
+		WaitForSingleObject(fullSemaphore, INFINITE);
 		//wait(mutex)
-
+		WaitForSingleObject(Mutex, INFINITE);
 
 		//remove an item from buffer to next_consumed
 		//buffer_item next_consumed;
 		//if(remove_item(&next_consumed))
-			//fprint("report error condition")
+		//fprint("report error condition")
 		//else
-			//printf("Consumer consumed %d\n",next_consumed);
+		//printf("Consumer consumed %d\n",next_consumed);
 
 		//signal(mutex)
+		if (ReleaseMutex(Mutex) == 0)
+		{
+			std::cerr << "Consumer release Mutex Failed" << std::endl;
+		}
 		//signal(empty)
-		
+		if (ReleaseSemaphore(emptySemaphore, 1, NULL) == 0)
+		{
+			std::cerr << "Consumer release Semaphore Failed" << std::endl;
+		}
+
 		//...
 		//consume the item in next_consumed
 		//sleep(rand);
 
 	} while (true);
-	
+
 }
 
 int remove_item(buffer_item* item)
