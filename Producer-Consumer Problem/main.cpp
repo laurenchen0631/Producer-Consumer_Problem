@@ -36,7 +36,7 @@ int stringToInt(const char* argv)
 	int Int;
 	if (!(ss >> Int))
 	{
-		std::cerr << "argv: Invalid number " << argv << '\n';
+		fprintf_s(fp, "argv: Invalid number %s\n", argv);
 		return 1;
 	}
 
@@ -160,7 +160,6 @@ int main(int argc, char* argv[])
 
 	/*  5. Sleep */
 	#pragma region 5. Sleep 
-	
 	Sleep(sleepTime);
 	bContinue = false;
 
@@ -170,8 +169,7 @@ int main(int argc, char* argv[])
 	printf("--------------Waiting the consumer threads finished---------------\n\n");
 	WaitForMultipleObjects(numConsumer, &consumerThread[0], TRUE, INFINITE);
 
-	printf("--------------All threads finished---------------\n\n");
-	
+	printf("--------------All threads finished---------------\n\n");	
 	#pragma endregion
 
 	/*  6. Exit */
@@ -219,11 +217,11 @@ DWORD WINAPI producer(LPVOID Param)
 
 		//signal(mutex)
 		if (ReleaseMutex(Mutex) == 0)
-			printf("Producer %lu\tRelease Mutex error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
+			fprintf_s(fp, "Producer %lu\tRelease Mutex error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
 		printf("---------------------------------------------\n\n", ThreadId);
 		//signal(full)
 		if (ReleaseSemaphore(fullSemaphore, 1, NULL) == 0)
-			printf("Producer %lu\tRelease Semaphore error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
+			fprintf_s(fp, "Producer %lu\tRelease Semaphore error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
 
 	} while (bContinue);
 
@@ -254,11 +252,11 @@ DWORD WINAPI consumer(LPVOID Param)
 
 		//signal(mutex)
 		if (ReleaseMutex(Mutex) == 0)
-			printf("Consumer %lu\tRelease Mutex error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
+			fprintf_s(fp, "Consumer %lu\tRelease Mutex error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
 		printf("---------------------------------------------\n\n", ThreadId);
 		//signal(empty)
 		if (ReleaseSemaphore(emptySemaphore, 1, NULL) == 0)
-			printf("Consumer %lu\tRelease Semaphore error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
+			fprintf_s(fp, "Consumer %lu\tRelease Semaphore error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
 		
 		//...
 		//consume the item in next_consumed
