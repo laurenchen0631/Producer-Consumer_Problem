@@ -5,9 +5,7 @@
 #include <sstream>
 #include <time.h>
 #include <vector>
-
-typedef int buffer_item;
-#define BUFFER_SIZE 5
+#include "buffer.h"
 
 HANDLE Mutex;
 HANDLE emptySemaphore;
@@ -16,10 +14,7 @@ FILE* fp;
 bool bContinue = true;;
 
 DWORD WINAPI producer(LPVOID);
-int insert_item(buffer_item);
-
 DWORD WINAPI consumer(LPVOID);
-int remove_item(buffer_item*);
 
 const std::string currentDateTime() {
 	time_t     now = time(0);
@@ -229,14 +224,6 @@ DWORD WINAPI producer(LPVOID Param)
 	return TRUE;
 }
 
-int insert_item(buffer_item item)
-{
-	//insert item into buffer
-
-	return 0; //if successful
-	return -1; // Indicating an error condition
-}
-
 DWORD WINAPI consumer(LPVOID Param)
 {
 	UNREFERENCED_PARAMETER(Param);
@@ -274,13 +261,4 @@ DWORD WINAPI consumer(LPVOID Param)
 	} while (bContinue);
 
 	return TRUE;
-}
-
-int remove_item(buffer_item* item)
-{
-	//remove an item from the buffer
-
-	return 0; //if successful
-	return -1; // Indicating an error condition
-
 }
