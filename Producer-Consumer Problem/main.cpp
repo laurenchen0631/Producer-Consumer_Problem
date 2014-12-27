@@ -150,11 +150,14 @@ int main(int argc, char* argv[])
 	#pragma endregion
 
 	/*  5. Sleep */
-	std::cout << "------------Main Sleep---------------\n";
+	#pragma region 5. Sleep 
+	printf("--------------Main Sleep---------------\n");
 	Sleep(sleepTime);
-	std::cout << "--------------Main AWAKE!!---------------\n";
+	printf("--------------Main AWAKE!!---------------\n");
+	#pragma endregion
 
 	/*  6. Exit */
+	#pragma region 6. Exit
 	for (int i = 0; i < numProducer; i++)
 		CloseHandle(producerThread[i]);
 	for (int i = 0; i < numConsumer; i++)
@@ -163,6 +166,7 @@ int main(int argc, char* argv[])
 	CloseHandle(emptySemaphore);
 	CloseHandle(fullSemaphore);
 	fclose(fp);
+	#pragma endregion
 
 	system("PAUSE");
 	return 0;
@@ -271,10 +275,13 @@ DWORD WINAPI ThreadProc(LPVOID lpParam)
 DWORD WINAPI producer(LPVOID Param)
 {
 	UNREFERENCED_PARAMETER(Param);
+	
 	//std::cout << "Producer ID: " << GetCurrentThreadId() << " Created\n";
+
 	do
 	{
 
+		//Sleep(rand());
 		//Sleep(rand());
 		//produce an item in next_produced
 		//buffer_item next_produced = rand();
@@ -284,6 +291,8 @@ DWORD WINAPI producer(LPVOID Param)
 		//wait(mutex)
 		WaitForSingleObject(Mutex, INFINITE); // INFINITE indicates that it will wait an infinite amount of	time for the lock to become available.
 		
+		printf("Producer ID: %lu GET the lock\n", GetCurrentThreadId());
+		//std::cout << "Producer ID: " << GetCurrentThreadId() << " GET the lock" << std::endl;
 		//add next_produced to the buffer
 		//if(insert_item(next_produced))
 		//fprint("report error condition")
@@ -293,14 +302,17 @@ DWORD WINAPI producer(LPVOID Param)
 		//signal(mutex)
 		if (ReleaseMutex(Mutex) == 0)
 		{
-			std::cerr << "Producer " << GetCurrentThreadId() << " release Mutex Failed\n";
+			//std::cerr << "Producer " << GetCurrentThreadId() << " release Mutex Failed" << std::endl;;
 		}
 
 		//signal(full)
 		if (ReleaseSemaphore(fullSemaphore, 1, NULL) == 0)
 		{
-			std::cerr << "Producer " << GetCurrentThreadId() << " release Semaphore Failed\n";
+			//std::cerr << "Producer " << GetCurrentThreadId() << " release Semaphore Failed" << std::endl;;
 		}
+
+		printf("Producer ID: %lu RELEASE the lock\n", GetCurrentThreadId());
+		//std::cout << "Producer ID: " << GetCurrentThreadId() << " RELEASE the lock" << std::endl;;
 	} while (true);
 
 }
@@ -316,6 +328,7 @@ int insert_item(buffer_item item)
 DWORD WINAPI consumer(LPVOID Param)
 {
 	UNREFERENCED_PARAMETER(Param);
+	Sleep(5);
 	//std::cout << "Consumer ID: " << GetCurrentThreadId() << " Created\n";
 	do
 	{
@@ -324,6 +337,8 @@ DWORD WINAPI consumer(LPVOID Param)
 		//wait(mutex)
 		WaitForSingleObject(Mutex, INFINITE);
 
+		printf("Consumer ID: %lu GET the lock\n", GetCurrentThreadId());
+		//std::cout << "Consumer ID: " << GetCurrentThreadId() << " GET the lock" << std::endl;;
 		//remove an item from buffer to next_consumed
 		//buffer_item next_consumed;
 		//if(remove_item(&next_consumed))
@@ -334,18 +349,21 @@ DWORD WINAPI consumer(LPVOID Param)
 		//signal(mutex)
 		if (ReleaseMutex(Mutex) == 0)
 		{
-			std::cerr << "Consumer " << GetCurrentThreadId() << " release Mutex Failed\n";
+			//std::cerr << "Consumer " << GetCurrentThreadId() << " release Mutex Failed" << std::endl;;
 		}
 		//signal(empty)
 		if (ReleaseSemaphore(emptySemaphore, 1, NULL) == 0)
 		{
-			std::cerr << "Consumer " << GetCurrentThreadId() << " release Semaphore Failed\n";
+			//std::cerr << "Consumer " << GetCurrentThreadId() << " release Semaphore Failed" << std::endl;;
 		}
+		printf("Consumer ID: %lu RELEASE the lock\n", GetCurrentThreadId());
+		//std::cout << "Consumer ID: " << GetCurrentThreadId() << " RELEASE the lock" << std::endl;;
 
 		//...
 		//consume the item in next_consumed
 		//sleep(rand);
 
+		
 	} while (true);
 
 }
