@@ -114,6 +114,7 @@ int main(int argc, char* argv[])
 	}
 	#pragma endregion
 
+	printf("--------------------BEGIN---------------------\n");
 	/*  3. Create producer threads */
 	#pragma region 3. Create producer thread
 	DWORD ThreadID;
@@ -160,13 +161,17 @@ int main(int argc, char* argv[])
 	/*  5. Sleep */
 	#pragma region 5. Sleep 
 	
-	printf("--------------Main Sleep---------------\n");
 	Sleep(sleepTime);
 	bContinue = false;
-	printf("--------------Main AWAKE!!---------------\n");
+
+	printf("--------------Waiting the producer threads finished---------------\n\n");
 	WaitForMultipleObjects(numProducer, &producerThread[0], TRUE, INFINITE);
+
+	printf("--------------Waiting the consumer threads finished---------------\n\n");
 	WaitForMultipleObjects(numConsumer, &consumerThread[0], TRUE, INFINITE);
 
+	printf("--------------All threads finished---------------\n\n");
+	
 	#pragma endregion
 
 	/*  6. Exit */
@@ -192,33 +197,34 @@ DWORD WINAPI producer(LPVOID Param)
 	DWORD ThreadId = GetCurrentThreadId();
 	do
 	{
-		//Sleep(rand());
+		Sleep(rand() % 10);
 		//produce an item in next_produced
-		//buffer_item next_produced = rand();
+		buffer_item next_produced = rand();
 
 		//wait(empty)
+
+		//printf("------------Producer %lu Waiting emptySemaphore---------------\n\n", ThreadId);
 		WaitForSingleObject(emptySemaphore, INFINITE);
 		//wait(mutex)
+		//printf("------------Producer %lu Waiting Mutex---------------\n\n", ThreadId);
 		WaitForSingleObject(Mutex, INFINITE); // INFINITE indicates that it will wait an infinite amount of	time for the lock to become available.	
-		printf("Producer ID: %lu\tGET the lock\n", ThreadId);
+		printf("------------Producer ID: %lu---------------\n", ThreadId);
 
-		//std::cout << "Producer ID: " << GetCurrentThreadId() << " GET the lock" << std::endl;
 		//add next_produced to the buffer
-		//if(insert_item(next_produced))
-		//fprint("report error condition")
-		//else
-		//printf("Producer produced %d\n",next_produced);
+		if (insert_item(next_produced))
+			fprintf_s(fp, "Producer %lu\tThe buffer is full\n", ThreadId);
+		else
+			printf("Producer %lu\tproduced %d\n", ThreadId, next_produced);
+		printf("There are %d items in buffer\n",counter);
 
 		//signal(mutex)
 		if (ReleaseMutex(Mutex) == 0)
 			printf("Producer %lu\tRelease Mutex error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
-		printf("Producer ID: %lu\tRELEASE the lock\n", ThreadId);
+		printf("---------------------------------------------\n\n", ThreadId);
 		//signal(full)
 		if (ReleaseSemaphore(fullSemaphore, 1, NULL) == 0)
 			printf("Producer %lu\tRelease Semaphore error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
 
-		
-		//std::cout << "Producer ID: " << GetCurrentThreadId() << " RELEASE the lock" << std::endl;;
 	} while (bContinue);
 
 	return TRUE;
@@ -231,33 +237,33 @@ DWORD WINAPI consumer(LPVOID Param)
 	do
 	{
 		//wait(full)
+		//printf("------------Producer %lu Waiting emptySemaphore---------------\n\n", ThreadId);
 		WaitForSingleObject(fullSemaphore, INFINITE);
 		//wait(mutex)
+		//printf("------------Producer %lu Waiting Mutex---------------\n\n", ThreadId);
 		WaitForSingleObject(Mutex, INFINITE);
-		printf("Consumer ID: %lu\tGET the lock\n", ThreadId);
+		printf("------------Consumer ID: %lu---------------\n", ThreadId);
+
 		//remove an item from buffer to next_consumed
-		//buffer_item next_consumed;
-		//if(remove_item(&next_consumed))
-		//fprint("report error condition")
-		//else
-		//printf("Consumer consumed %d\n",next_consumed);
+		buffer_item next_consumed;
+		if (remove_item(&next_consumed))
+			fprintf_s(fp, "Consumer %lu\tThe buffer is empty\n", ThreadId);
+		else
+			printf("Consumer %lu\tconsumed %d\n", ThreadId, next_consumed);
+		printf("There are %d items in buffer\n", counter);
 
 		//signal(mutex)
 		if (ReleaseMutex(Mutex) == 0)
-		{
 			printf("Consumer %lu\tRelease Mutex error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
-		}
-		printf("Consumer ID: %lu\tRELEASE the lock\n", ThreadId);
+		printf("---------------------------------------------\n\n", ThreadId);
 		//signal(empty)
 		if (ReleaseSemaphore(emptySemaphore, 1, NULL) == 0)
-		{
 			printf("Consumer %lu\tRelease Semaphore error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
-		}
 		
 		//...
 		//consume the item in next_consumed
 		//sleep(rand);
-		
+		Sleep(rand() % 10);
 	} while (bContinue);
 
 	return TRUE;
