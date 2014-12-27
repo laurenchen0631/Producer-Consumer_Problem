@@ -4,7 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <time.h>
-#include <list>
+#include <vector>
 
 /*---------------Example-------------*/
 #define MAX_SEM_COUNT 10
@@ -66,7 +66,7 @@ int main(int argc, char* argv[])
 		//std::cout << currentDateTime() << std::endl;
 		exit(EXIT_FAILURE);
 	}
-	int sleepTime = stringToInt(argv[1]);
+	int sleepTime = stringToInt(argv[1]); // Time unit : Millisecond
 	int numProducer = stringToInt(argv[2]);
 	int numConsumer = stringToInt(argv[3]);
 	#pragma endregion
@@ -107,15 +107,63 @@ int main(int argc, char* argv[])
 	#pragma endregion
 
 	/*  3. Create producer threads */
-	std::list<HANDLE> producerThread(numProducer);
+	#pragma region 3. Create producer thread
+	DWORD ThreadID;
+	std::vector<HANDLE> producerThread(numProducer);
+	for (int i = 0; i < numProducer; i++)
+	{
+		producerThread[i] = CreateThread(
+			NULL,       // default security attributes
+			0,          // default stack size
+			(LPTHREAD_START_ROUTINE)producer,
+			NULL,       // no thread function arguments
+			0,          // default creation flags
+			&ThreadID); // receive thread identifier
+
+		if (producerThread[i] == NULL)
+		{
+			fprintf_s(fp, "%s CreateProducerThread error: %d\n", currentDateTime().c_str(), GetLastError());
+			exit(EXIT_FAILURE);
+		}
+	}
+	#pragma endregion
 
 	/*  4. Create consumer threads */
-	std::list<HANDLE> consumerThread(numConsumer);
+	#pragma region 4. Create consumer threads
+	std::vector<HANDLE> consumerThread(numConsumer);
+	for (int i = 0; i < numConsumer; i++)
+	{
+		consumerThread[i] = CreateThread(
+			NULL,       // default security attributes
+			0,          // default stack size
+			(LPTHREAD_START_ROUTINE)consumer,
+			NULL,       // no thread function arguments
+			0,          // default creation flags
+			&ThreadID); // receive thread identifier
+
+		if (consumerThread[i] == NULL)
+		{
+			fprintf_s(fp, "%s CreateConsumerThread error: %d\n", currentDateTime().c_str(), GetLastError());
+			exit(EXIT_FAILURE);
+		}
+	}
+	#pragma endregion
 
 	/*  5. Sleep */
+	std::cout << "------------Main Sleep---------------\n";
+	Sleep(sleepTime);
+	std::cout << "--------------Main AWAKE!!---------------\n";
 
 	/*  6. Exit */
+	for (int i = 0; i < numProducer; i++)
+		CloseHandle(producerThread[i]);
+	for (int i = 0; i < numConsumer; i++)
+		CloseHandle(consumerThread[i]);
+	CloseHandle(Mutex);
+	CloseHandle(emptySemaphore);
+	CloseHandle(fullSemaphore);
 	fclose(fp);
+
 	system("PAUSE");
 	return 0;
 }
@@ -222,10 +270,12 @@ DWORD WINAPI ThreadProc(LPVOID lpParam)
 
 DWORD WINAPI producer(LPVOID Param)
 {
+	UNREFERENCED_PARAMETER(Param);
+	//std::cout << "Producer ID: " << GetCurrentThreadId() << " Created\n";
 	do
 	{
-		
-		//sleep(rand());
+
+		//Sleep(rand());
 		//produce an item in next_produced
 		//buffer_item next_produced = rand();
 
@@ -233,7 +283,7 @@ DWORD WINAPI producer(LPVOID Param)
 		WaitForSingleObject(emptySemaphore, INFINITE);
 		//wait(mutex)
 		WaitForSingleObject(Mutex, INFINITE); // INFINITE indicates that it will wait an infinite amount of	time for the lock to become available.
-
+		
 		//add next_produced to the buffer
 		//if(insert_item(next_produced))
 		//fprint("report error condition")
@@ -243,13 +293,13 @@ DWORD WINAPI producer(LPVOID Param)
 		//signal(mutex)
 		if (ReleaseMutex(Mutex) == 0)
 		{
-			std::cerr << "Producer release Mutex Failed" << std::endl;
+			std::cerr << "Producer " << GetCurrentThreadId() << " release Mutex Failed\n";
 		}
 
 		//signal(full)
 		if (ReleaseSemaphore(fullSemaphore, 1, NULL) == 0)
 		{
-			std::cerr << "Producer release Semaphore Failed" << std::endl;
+			std::cerr << "Producer " << GetCurrentThreadId() << " release Semaphore Failed\n";
 		}
 	} while (true);
 
@@ -265,6 +315,8 @@ int insert_item(buffer_item item)
 
 DWORD WINAPI consumer(LPVOID Param)
 {
+	UNREFERENCED_PARAMETER(Param);
+	//std::cout << "Consumer ID: " << GetCurrentThreadId() << " Created\n";
 	do
 	{
 		//wait(full)
@@ -282,12 +334,12 @@ DWORD WINAPI consumer(LPVOID Param)
 		//signal(mutex)
 		if (ReleaseMutex(Mutex) == 0)
 		{
-			std::cerr << "Consumer release Mutex Failed" << std::endl;
+			std::cerr << "Consumer " << GetCurrentThreadId() << " release Mutex Failed\n";
 		}
 		//signal(empty)
 		if (ReleaseSemaphore(emptySemaphore, 1, NULL) == 0)
 		{
-			std::cerr << "Consumer release Semaphore Failed" << std::endl;
+			std::cerr << "Consumer " << GetCurrentThreadId() << " release Semaphore Failed\n";
 		}
 
 		//...
