@@ -54,6 +54,25 @@ int stringToInt(const char* argv)
 	return Int;
 }
 
+//Returns the last Win32 error, in string format. Returns an empty string if there is no error.
+std::string GetLastErrorAsString(DWORD errorMessageID)
+{
+	//Get the error message, if any.
+	if (errorMessageID == 0)
+		return "No error message has been recorded";
+
+	LPSTR messageBuffer = nullptr;
+	size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+
+	std::string message(messageBuffer, size);
+
+	//Free the buffer.
+	LocalFree(messageBuffer);
+
+	return message;
+}
+
 int main(int argc, char* argv[])
 {
 	/*  1. Get command line arguments argv[1]:How long to sleep before terminating, argv[2]:the num of producer, argv[3]:the num of consumer  */
@@ -79,7 +98,7 @@ int main(int argc, char* argv[])
 		NULL);	// Name of the Mutex
 	if (Mutex == NULL)
 	{
-		fprintf_s(fp, "%s CreateMutex error: %d\n", currentDateTime().c_str(), GetLastError());
+		fprintf_s(fp, "%s CreateMutex error: %s", currentDateTime().c_str(), GetLastErrorAsString(GetLastError()));
 		exit(EXIT_FAILURE);
 	}
 
@@ -90,7 +109,7 @@ int main(int argc, char* argv[])
 		NULL);          // unnamed semaphore
 	if (emptySemaphore == NULL)
 	{
-		fprintf_s(fp, "%s CreateSemaphore error: %d\n", currentDateTime().c_str(), GetLastError());
+		fprintf_s(fp, "%s CreateSemaphore error: %s", currentDateTime().c_str(), GetLastErrorAsString(GetLastError()));
 		exit(EXIT_FAILURE);
 	}
 
@@ -101,7 +120,7 @@ int main(int argc, char* argv[])
 		NULL);
 	if (fullSemaphore == NULL)
 	{
-		fprintf_s(fp, "%s CreateSemaphore error: %d\n", currentDateTime().c_str(), GetLastError());
+		fprintf_s(fp, "%s CreateSemaphore error: %s", currentDateTime().c_str(), GetLastErrorAsString(GetLastError()));
 		exit(EXIT_FAILURE);
 	}
 	#pragma endregion
@@ -122,7 +141,7 @@ int main(int argc, char* argv[])
 
 		if (producerThread[i] == NULL)
 		{
-			fprintf_s(fp, "%s CreateProducerThread error: %d\n", currentDateTime().c_str(), GetLastError());
+			fprintf_s(fp, "%s CreateProducerThread error: %s", currentDateTime().c_str(), GetLastErrorAsString(GetLastError()));
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -143,7 +162,7 @@ int main(int argc, char* argv[])
 
 		if (consumerThread[i] == NULL)
 		{
-			fprintf_s(fp, "%s CreateConsumerThread error: %d\n", currentDateTime().c_str(), GetLastError());
+			fprintf_s(fp, "%s CreateConsumerThread error: %s", currentDateTime().c_str(), GetLastErrorAsString(GetLastError()));
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -151,6 +170,7 @@ int main(int argc, char* argv[])
 
 	/*  5. Sleep */
 	#pragma region 5. Sleep 
+	
 	printf("--------------Main Sleep---------------\n");
 	Sleep(sleepTime);
 	printf("--------------Main AWAKE!!---------------\n");
@@ -275,13 +295,11 @@ DWORD WINAPI ThreadProc(LPVOID lpParam)
 DWORD WINAPI producer(LPVOID Param)
 {
 	UNREFERENCED_PARAMETER(Param);
-	
+	DWORD ThreadId = GetCurrentThreadId();
 	//std::cout << "Producer ID: " << GetCurrentThreadId() << " Created\n";
 
 	do
 	{
-
-		//Sleep(rand());
 		//Sleep(rand());
 		//produce an item in next_produced
 		//buffer_item next_produced = rand();
@@ -291,7 +309,7 @@ DWORD WINAPI producer(LPVOID Param)
 		//wait(mutex)
 		WaitForSingleObject(Mutex, INFINITE); // INFINITE indicates that it will wait an infinite amount of	time for the lock to become available.
 		
-		printf("Producer ID: %lu GET the lock\n", GetCurrentThreadId());
+		printf("Producer ID: %lu GET the lock\n", ThreadId);
 		//std::cout << "Producer ID: " << GetCurrentThreadId() << " GET the lock" << std::endl;
 		//add next_produced to the buffer
 		//if(insert_item(next_produced))
@@ -301,17 +319,13 @@ DWORD WINAPI producer(LPVOID Param)
 
 		//signal(mutex)
 		if (ReleaseMutex(Mutex) == 0)
-		{
-			//std::cerr << "Producer " << GetCurrentThreadId() << " release Mutex Failed" << std::endl;;
-		}
+			printf("Producer %lu Release Mutex error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
 
 		//signal(full)
 		if (ReleaseSemaphore(fullSemaphore, 1, NULL) == 0)
-		{
-			//std::cerr << "Producer " << GetCurrentThreadId() << " release Semaphore Failed" << std::endl;;
-		}
+			printf("Producer %lu Release Semaphore error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
 
-		printf("Producer ID: %lu RELEASE the lock\n", GetCurrentThreadId());
+		printf("Producer ID: %lu RELEASE the lock\n", ThreadId);
 		//std::cout << "Producer ID: " << GetCurrentThreadId() << " RELEASE the lock" << std::endl;;
 	} while (true);
 
@@ -328,7 +342,9 @@ int insert_item(buffer_item item)
 DWORD WINAPI consumer(LPVOID Param)
 {
 	UNREFERENCED_PARAMETER(Param);
-	Sleep(5);
+	DWORD ThreadId = GetCurrentThreadId();
+
+	//Sleep(5);
 	//std::cout << "Consumer ID: " << GetCurrentThreadId() << " Created\n";
 	do
 	{
@@ -337,7 +353,7 @@ DWORD WINAPI consumer(LPVOID Param)
 		//wait(mutex)
 		WaitForSingleObject(Mutex, INFINITE);
 
-		printf("Consumer ID: %lu GET the lock\n", GetCurrentThreadId());
+		printf("Consumer ID: %lu GET the lock\n", ThreadId);
 		//std::cout << "Consumer ID: " << GetCurrentThreadId() << " GET the lock" << std::endl;;
 		//remove an item from buffer to next_consumed
 		//buffer_item next_consumed;
@@ -350,13 +366,15 @@ DWORD WINAPI consumer(LPVOID Param)
 		if (ReleaseMutex(Mutex) == 0)
 		{
 			//std::cerr << "Consumer " << GetCurrentThreadId() << " release Mutex Failed" << std::endl;;
+			printf("Consumer %lu Release Mutex error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
 		}
 		//signal(empty)
 		if (ReleaseSemaphore(emptySemaphore, 1, NULL) == 0)
 		{
 			//std::cerr << "Consumer " << GetCurrentThreadId() << " release Semaphore Failed" << std::endl;;
+			printf("Consumer %lu Release Semaphore error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
 		}
-		printf("Consumer ID: %lu RELEASE the lock\n", GetCurrentThreadId());
+		printf("Consumer ID: %lu RELEASE the lock\n", ThreadId);
 		//std::cout << "Consumer ID: " << GetCurrentThreadId() << " RELEASE the lock" << std::endl;;
 
 		//...
