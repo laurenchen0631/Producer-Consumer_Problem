@@ -11,6 +11,7 @@ HANDLE Mutex;
 HANDLE emptySemaphore;
 HANDLE fullSemaphore;
 FILE* fp;
+int t = 0;
 bool bContinue = true;;
 
 DWORD WINAPI producer(LPVOID);
@@ -163,11 +164,11 @@ int main(int argc, char* argv[])
 	Sleep(sleepTime);
 	bContinue = false;
 
-	printf("--------------Waiting the producer threads finished---------------\n\n");
-	WaitForMultipleObjects(numProducer, &producerThread[0], TRUE, INFINITE);
+	//printf("--------------Waiting the producer threads finished---------------\n\n");
+	WaitForMultipleObjects(numProducer, &producerThread[0], TRUE, sleepTime);
 
-	printf("--------------Waiting the consumer threads finished---------------\n\n");
-	WaitForMultipleObjects(numConsumer, &consumerThread[0], TRUE, INFINITE);
+	//printf("--------------Waiting the consumer threads finished---------------\n\n");
+	WaitForMultipleObjects(numConsumer, &consumerThread[0], TRUE, sleepTime);
 
 	printf("--------------All threads finished---------------\n\n");	
 	#pragma endregion
@@ -195,7 +196,9 @@ DWORD WINAPI producer(LPVOID Param)
 	DWORD ThreadId = GetCurrentThreadId();
 	do
 	{
+		srand(time(NULL) + (t++));
 		Sleep(rand() % 10);
+
 		//produce an item in next_produced
 		buffer_item next_produced = rand();
 
@@ -223,6 +226,7 @@ DWORD WINAPI producer(LPVOID Param)
 		if (ReleaseSemaphore(fullSemaphore, 1, NULL) == 0)
 			fprintf_s(fp, "Producer %lu\tRelease Semaphore error: %s", ThreadId, GetLastErrorAsString(GetLastError()).c_str());
 
+		t++;
 	} while (bContinue);
 
 	return TRUE;
@@ -261,6 +265,7 @@ DWORD WINAPI consumer(LPVOID Param)
 		//...
 		//consume the item in next_consumed
 		//sleep(rand);
+		srand(time(NULL) + (t++));
 		Sleep(rand() % 10);
 	} while (bContinue);
 
