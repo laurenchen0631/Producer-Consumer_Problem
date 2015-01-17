@@ -6,6 +6,8 @@
 #include <time.h>
 #include <vector>
 #include "buffer.h"
+#include <gl\glut.h>
+
 
 HANDLE Mutex;
 HANDLE emptySemaphore;
