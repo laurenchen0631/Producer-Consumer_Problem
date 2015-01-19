@@ -6,7 +6,7 @@
 #include <time.h>
 #include <vector>
 #include "buffer.h"
-#include <gl\glut.h>
+
 
 
 HANDLE Mutex;
@@ -77,7 +77,7 @@ int main(int argc, char* argv[])
 		//std::cout << currentDateTime() << std::endl;
 		exit(EXIT_FAILURE);
 	}
-	int sleepTime = stringToInt(argv[1]); // Time unit : Millisecond
+	int sleepTime = 10000; // Time unit : Millisecond
 	int numProducer = stringToInt(argv[2]);
 	int numConsumer = stringToInt(argv[3]);
 	#pragma endregion
@@ -211,6 +211,9 @@ DWORD WINAPI producer(LPVOID Param)
 		//wait(mutex)
 		//printf("------------Producer %lu Waiting Mutex---------------\n\n", ThreadId);
 		WaitForSingleObject(Mutex, INFINITE); // INFINITE indicates that it will wait an infinite amount of	time for the lock to become available.	
+		
+		Sleep(1000);
+		system("cls");
 		printf("------------Producer ID: %lu---------------\n", ThreadId);
 
 		//add next_produced to the buffer
@@ -218,7 +221,11 @@ DWORD WINAPI producer(LPVOID Param)
 			fprintf_s(fp, "Producer %lu\tThe buffer is full\n", ThreadId);
 		else
 			printf("Producer %lu\tproduced %d\n", ThreadId, next_produced);
-		printf("There are %d items in buffer\n",counter);
+
+		printf("Buffer: ");
+		for (int i = 0; i < counter; i++)
+			printf("¡¯");
+		printf("\n");
 
 		//signal(mutex)
 		if (ReleaseMutex(Mutex) == 0)
@@ -246,6 +253,9 @@ DWORD WINAPI consumer(LPVOID Param)
 		//wait(mutex)
 		//printf("------------Producer %lu Waiting Mutex---------------\n\n", ThreadId);
 		WaitForSingleObject(Mutex, INFINITE);
+		
+		Sleep(1000);
+		system("cls");
 		printf("------------Consumer ID: %lu---------------\n", ThreadId);
 
 		//remove an item from buffer to next_consumed
@@ -254,7 +264,11 @@ DWORD WINAPI consumer(LPVOID Param)
 			fprintf_s(fp, "Consumer %lu\tThe buffer is empty\n", ThreadId);
 		else
 			printf("Consumer %lu\tconsumed %d\n", ThreadId, next_consumed);
-		printf("There are %d items in buffer\n", counter);
+		//printf("There are %d items in buffer\n", counter);
+		printf("Buffer: ");
+		for (int i = 0; i < counter; i++)
+			printf("¡¯");
+		printf("\n");
 
 		//signal(mutex)
 		if (ReleaseMutex(Mutex) == 0)
